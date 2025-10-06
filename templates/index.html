@@ -151,8 +151,19 @@
 
             htmlOutput.select();
             htmlOutput.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(htmlOutput.value);
-            showMessage('✅ कोड कॉपी हुआ!', 'success');
+            
+            try {
+                // Modern clipboard API
+                navigator.clipboard.writeText(htmlOutput.value).then(function() {
+                    showMessage('✅ कोड कॉपी हुआ!', 'success');
+                }).catch(function(err) {
+                    // Fallback for older browsers
+                    document.execCommand('copy');
+                    showMessage('✅ कोड कॉपी हुआ!', 'success');
+                });
+            } catch (err) {
+                showMessage('❌ कॉपी नहीं हो पाया!', 'error');
+            }
         }
 
         function downloadHTML() {
@@ -162,17 +173,28 @@
                 return;
             }
 
-            const testName = document.getElementById('testName').value.replace(/\s+/g, '_');
-            const blob = new Blob([htmlOutput.value], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${testName}_quiz.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showMessage('✅ फाइल डाउनलोड हुई!', 'success');
+            try {
+                const testName = document.getElementById('testName').value.replace(/[^a-zA-Z0-9]/g, '_');
+                const blob = new Blob([htmlOutput.value], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                
+                a.href = url;
+                a.download = testName + '_quiz.html';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                setTimeout(function() {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                showMessage('✅ फाइल डाउनलोड हुई!', 'success');
+            } catch (error) {
+                console.error('Download error:', error);
+                showMessage('❌ डाउनलोड में त्रुटि!', 'error');
+            }
         }
 
         function previewQuiz() {
@@ -220,7 +242,9 @@
             document.body.appendChild(messageDiv);
 
             setTimeout(() => {
-                messageDiv.remove();
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
             }, 3000);
         }
 
